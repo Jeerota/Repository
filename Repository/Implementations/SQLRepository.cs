@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Repository.Interfaces;
 using Repository.Models;
+using System;
 using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -43,28 +44,37 @@ namespace Repository.Implementations
         }
 
         private static IQueryable<TDTO> GetQueryable<TDTO, TEntity>(DbContext dbContext, LookupRequest<TDTO, TEntity> lookupRequest)
+            where TEntity : BaseEntity =>
+            GetQueryable(dbContext, lookupRequest.GetPredicate(),
+                lookupRequest.Select,
+                lookupRequest.GetOrderBy(),
+                lookupRequest.TemporalAsOf,
+                lookupRequest.GetInclude());
+
+        private static IQueryable<TDTO> GetQueryable<TDTO, TEntity>(DbContext dbContext, 
+            Expression<Func<TEntity, bool>> predicate,
+            Expression<Func<TEntity, TDTO>> select,
+            Func<IQueryable<TDTO>, IOrderedQueryable<TDTO>>? orderBy, 
+            DateTime? temporalAsOf,
+            params Expression<Func<TEntity, object>>[] include)
             where TEntity : BaseEntity
         {
-            var query = lookupRequest.TemporalAsOf.HasValue
-                ? dbContext.Set<TEntity>().TemporalAsOf(lookupRequest.TemporalAsOf.Value)
+            var query = temporalAsOf.HasValue
+                ? dbContext.Set<TEntity>().TemporalAsOf(temporalAsOf.Value)
                 : dbContext.Set<TEntity>().AsNoTracking();
 
-            query = query.Where(lookupRequest.GetPredicate());
+            query = query.Where(predicate);
 
-            if (lookupRequest.Include.Count != 0)
-                query = IncludeInQuery(dbContext, lookupRequest.GetInclude());
-            
-            var convertedQuery = query.Select(lookupRequest.Select);
+            if (include.Any())
+                query = IncludeInQuery(dbContext, include, temporalAsOf);
 
-            if (lookupRequest.OrderBy.Count != 0)
-                convertedQuery = lookupRequest.GetOrderBy()(convertedQuery);
+            var convertedQuery = query.Select(select);
+
+            if (orderBy != null)
+                convertedQuery = orderBy(convertedQuery);
 
             return convertedQuery;
         }
-
-        private static IQueryable<IGrouping<TKey, TDTO>> GetGroupedQueryable<TDTO, TEntity, TKey>(DbContext dbContext, LookupRequest < TDTO, TEntity> lookupRequest)
-            where TEntity : BaseEntity => 
-            GetQueryable(dbContext, lookupRequest).GroupBy(lookupRequest.GetGroupBy<TKey>());
 
         private readonly string[] _ignoreProperties = ["ModifiedBy", "ModifiedOn", "IsArchived"];
 
@@ -293,72 +303,34 @@ namespace Repository.Implementations
             return GetQueryable(dbContext, lookupRequest);
         }
 
+        public IQueryable<TDTO> GetQueryable<TDTO, TEntity>(Expression<Func<TEntity, bool>> predicate,
+            Expression<Func<TEntity, TDTO>> select,
+            Func<IQueryable<TDTO>, IOrderedQueryable<TDTO>>? orderBy = null,
+            DateTime? temporalAsOf = null,
+            params Expression<Func<TEntity, object>>[] include)
+            where TEntity : BaseEntity
+        {
+            using var dbContext = _dbContextFactory.CreateDbContext();
+            return GetQueryable(dbContext, predicate, select, orderBy, temporalAsOf, include);
+        }
+
         public IQueryable<IGrouping<TKey, TDTO>> GetGroupedQueryable<TDTO, TEntity, TKey>(LookupRequest<TDTO, TEntity> lookupRequest)
             where TEntity : BaseEntity
         {
             using var dbContext = _dbContextFactory.CreateDbContext();
-            return GetGroupedQueryable<TDTO, TEntity, TKey>(dbContext, lookupRequest);
+            return GetQueryable(dbContext, lookupRequest).GroupBy(lookupRequest.GetGroupBy<TKey>());
         }
 
-
-        public async Task<TDTO> SingleAsync<TDTO, TEntity>(LookupRequest<TDTO, TEntity> lookupRequest)
+        public IQueryable<IGrouping<TKey, TDTO>> GetGroupedQueryable<TDTO, TEntity, TKey>(Expression<Func<TEntity, bool>> predicate,
+            Expression<Func<TEntity, TDTO>> select,
+            Expression<Func<TDTO, TKey>> groupBy,
+            Func<IQueryable<TDTO>, IOrderedQueryable<TDTO>>? orderBy = null,
+            DateTime? temporalAsOf = null,
+            params Expression<Func<TEntity, object>>[] include)
             where TEntity : BaseEntity
         {
             using var dbContext = _dbContextFactory.CreateDbContext();
-            return await GetQueryable(dbContext, lookupRequest).SingleAsync();
-        }
-
-        public async Task<TDTO?> SingleOrDefaultAsync<TDTO, TEntity>(LookupRequest<TDTO, TEntity> lookupRequest)
-            where TEntity : BaseEntity
-        {
-            using var dbContext = _dbContextFactory.CreateDbContext();
-            return await GetQueryable(dbContext, lookupRequest).SingleOrDefaultAsync();
-        }
-
-        public async Task<TDTO> FirstAsync<TDTO, TEntity>(LookupRequest<TDTO, TEntity> lookupRequest)
-            where TEntity : BaseEntity
-        {
-            using var dbContext = _dbContextFactory.CreateDbContext();
-            return await GetQueryable(dbContext, lookupRequest).FirstAsync();
-        }
-
-        public async Task<TDTO?> FirstOrDefaultAsync<TDTO, TEntity>(LookupRequest<TDTO, TEntity> lookupRequest)
-            where TEntity : BaseEntity
-        {
-            using var dbContext = _dbContextFactory.CreateDbContext();
-            return await GetQueryable(dbContext, lookupRequest).FirstOrDefaultAsync();
-        }
-
-        public async Task<TDTO> LastAsync<TDTO, TEntity>(LookupRequest<TDTO, TEntity> lookupRequest)
-            where TEntity : BaseEntity
-        {
-            using var dbContext = _dbContextFactory.CreateDbContext();
-            return await GetQueryable(dbContext, lookupRequest).LastAsync();
-        }
-
-        public async Task<TDTO?> LastOrDefaultAsync<TDTO, TEntity>(LookupRequest<TDTO, TEntity> lookupRequest)
-            where TEntity : BaseEntity
-        {
-            using var dbContext = _dbContextFactory.CreateDbContext();
-            return await GetQueryable(dbContext, lookupRequest).LastOrDefaultAsync();
-        }
-
-        public async Task<IEnumerable<TDTO>> GetEnumerableAsync<TDTO, TEntity>(LookupRequest<TDTO, TEntity> lookupRequest)
-            where TEntity : BaseEntity
-        {
-            using var dbContext = _dbContextFactory.CreateDbContext();
-            return lookupRequest.PageSize != null
-                ? await GetQueryable(dbContext, lookupRequest).Skip(lookupRequest.Page * lookupRequest.PageSize.Value).Take(lookupRequest.PageSize.Value).ToListAsync()
-                : await GetQueryable(dbContext, lookupRequest).ToListAsync();
-        }
-
-        public async Task<IEnumerable<IGrouping<TKey, TDTO>>> GetGroupedEnumerableAsync<TDTO, TEntity, TKey>(LookupRequest<TDTO, TEntity> lookupRequest)
-            where TEntity : BaseEntity
-        {
-            using var dbContext = _dbContextFactory.CreateDbContext();
-            return lookupRequest.PageSize != null
-                ? await GetGroupedQueryable<TDTO, TEntity, TKey>(dbContext, lookupRequest).Skip(lookupRequest.Page * lookupRequest.PageSize.Value).Take(lookupRequest.PageSize.Value).ToListAsync()
-                : await GetGroupedQueryable<TDTO, TEntity, TKey>(dbContext, lookupRequest).ToListAsync();
+            return GetQueryable(dbContext, predicate, select, orderBy, temporalAsOf, include).GroupBy(groupBy);
         }
 
         public async Task<FetchResponse<TDTO>> GetFetchResponseAsync<TDTO, TEntity>(LookupRequest<TDTO, TEntity> lookupRequest)
@@ -376,11 +348,32 @@ namespace Repository.Implementations
             };
         }
 
+        public async Task<FetchResponse<TDTO>> GetFetchResponseAsync<TDTO, TEntity>(Expression<Func<TEntity, bool>> predicate,
+            Expression<Func<TEntity, TDTO>> select,
+            int page,
+            int pageSize,
+            Func<IQueryable<TDTO>, IOrderedQueryable<TDTO>>? orderBy = null,
+            DateTime? temporalAsOf = null,
+            params Expression<Func<TEntity, object>>[] include)
+            where TEntity : BaseEntity
+        {
+            using var dbContext = _dbContextFactory.CreateDbContext();
+            var query = GetQueryable(dbContext, predicate, select, orderBy, temporalAsOf, include);
+
+            return new FetchResponse<TDTO>()
+            {
+                Page = page,
+                PageSize = pageSize,
+                TotalRecords = await query.CountAsync(),
+                Records = await query.Skip(page * pageSize).Take(pageSize).ToListAsync()
+            };
+        }
+
         public async Task<FetchResponse<IGrouping<TKey, TDTO>>> GetGroupedFetchResponseAsync<TDTO, TEntity, TKey>(LookupRequest<TDTO, TEntity> lookupRequest)
             where TEntity : BaseEntity
         {
             using var dbContext = _dbContextFactory.CreateDbContext();
-            var query = GetGroupedQueryable<TDTO, TEntity, TKey>(dbContext, lookupRequest);
+            var query = GetQueryable(dbContext, lookupRequest).GroupBy(lookupRequest.GetGroupBy<TKey>());
 
             return new FetchResponse<IGrouping<TKey, TDTO>>()
             {
@@ -388,6 +381,28 @@ namespace Repository.Implementations
                 PageSize = lookupRequest.PageSize!.Value,
                 TotalRecords = await query.CountAsync(),
                 Records = await query.Skip(lookupRequest.Page * lookupRequest.PageSize.Value).Take(lookupRequest.PageSize.Value).ToListAsync()
+            };
+        }
+
+        public async Task<FetchResponse<IGrouping<TKey, TDTO>>> GetGroupedFetchResponseAsync<TDTO, TEntity, TKey>(Expression<Func<TEntity, bool>> predicate,
+            Expression<Func<TEntity, TDTO>> select,
+            Expression<Func<TDTO, TKey>> groupBy,
+            int page,
+            int pageSize,
+            Func<IQueryable<TDTO>, IOrderedQueryable<TDTO>>? orderBy = null,
+            DateTime? temporalAsOf = null,
+            params Expression<Func<TEntity, object>>[] include)
+            where TEntity : BaseEntity
+        {
+            using var dbContext = _dbContextFactory.CreateDbContext();
+            var query = GetQueryable(dbContext, predicate, select, orderBy, temporalAsOf, include).GroupBy(groupBy);
+
+            return new FetchResponse<IGrouping<TKey, TDTO>>()
+            {
+                Page = page,
+                PageSize = pageSize,
+                TotalRecords = await query.CountAsync(),
+                Records = await query.Skip(page * pageSize).Take(pageSize).ToListAsync()
             };
         }
 
