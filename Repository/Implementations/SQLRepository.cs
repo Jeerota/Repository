@@ -533,8 +533,7 @@ namespace Repository.Implementations
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             return await DeleteAsync<TEntity>(dbContext, primaryKey, saveChanges: true);
-        }
-        
+        }        
 
         private async Task<ResultResponse<TEntity>> DeleteAsync<TEntity>(DbContext dbContext, object?[]? primaryKey, bool saveChanges = true)
             where TEntity : BaseEntity
