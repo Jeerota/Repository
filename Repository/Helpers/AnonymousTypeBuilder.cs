@@ -3,7 +3,7 @@ using System.Reflection.Emit;
 
 namespace Repository.Helpers
 {
-    internal static class AnonymousTypeBuilder
+    public static class AnonymousTypeBuilder
     {
         private static readonly AssemblyBuilder _assemblyBuilder =
             AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("DynamicAssembly"), AssemblyBuilderAccess.Run);
