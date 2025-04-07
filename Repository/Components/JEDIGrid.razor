@@ -1,26 +1,24 @@
-@using Radzen
-@using Radzen.Blazor
-@using Repository.Models
+@inject IRepository _repository;
 
 @typeparam TEntity where TEntity : BaseEntity
 @typeparam TDTO
 
 <RadzenDataGrid Data="@Records"
-    IsLoading="@_loading"
-    EditMode="@EditMode"
-    AllowColumnPicking="@AllowColumnPicking"
-        AllowPickAllColumns="@AllowColumnPicking"
-    AllowColumnReorder="@AllowColumnReorder"
-    AllowColumnResize="@AllowColumnResize"
-    AllowFiltering="@AllowFiltering"
-    AllowSorting="@AllowSorting"
-        AllowMultiColumnSorting="@AllowSorting"
-    AllowGrouping="@AllowGrouping"
-    AllowPaging="@AllowPaging"
-    AllowVirtualization="@AllowVirtualization"
-    AllowRowSelectOnRowClick="@AllowRowSelectOnClick">
+                IsLoading="@_loading"
+                EditMode="@EditMode"
+                AllowColumnPicking="@AllowColumnPicking"
+                AllowPickAllColumns="@AllowColumnPicking"
+                AllowColumnReorder="@AllowColumnReorder"
+                AllowColumnResize="@AllowColumnResize"
+                AllowFiltering="@AllowFiltering"
+                AllowSorting="@AllowSorting"
+                AllowMultiColumnSorting="@AllowSorting"
+                AllowGrouping="@AllowGrouping"
+                AllowPaging="@AllowPaging"
+                AllowVirtualization="@AllowVirtualization"
+                AllowRowSelectOnRowClick="@AllowRowSelectOnClick">
     <Columns>
-        @if(typeof(TDTO).IsValueType)
+        @if (typeof(TDTO).IsValueType)
         {
         }
         else if (typeof(TDTO).IsClass)
@@ -28,8 +26,24 @@
             @foreach (var property in typeof(TDTO).GetProperties())
             {
                 <RadzenDataGridColumn Property="@property.Name"
-                S>
+                                      Frozen="@ColumnOptionsMap[property.Name].Frozen"
+                                      Title="@ColumnOptionsMap[property.Name].Label"
+                                      ColumnPickerTitle="@ColumnOptionsMap[property.Name].Label">
+                    <FilterTemplate>
 
+                    </FilterTemplate>
+                    <Template>
+
+                    </Template>
+                    <EditTemplate>
+
+                    </EditTemplate>
+                    <HeaderTemplate>
+
+                    </HeaderTemplate>
+                    <FooterTemplate>
+
+                    </FooterTemplate>
                 </RadzenDataGridColumn>
             }
         }

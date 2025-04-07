@@ -5,9 +5,9 @@ using Repository.Implementations;
 
 namespace Repository
 {
-    public class DependencyInjection
+    public static class DependencyInjection
     {
-        public static void AddRepository(IServiceCollection services)
+        public static void AddRepository(this IServiceCollection services)
         {
             services.AddSingleton(typeof(IDbContextFactory<>));
             services.AddScoped<IApplicationContext>();
