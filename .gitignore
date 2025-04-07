@@ -361,3 +361,4 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/BlazorApp/Properties/ServiceDependencies/je-example-app - Web Deploy/profile.arm.json
