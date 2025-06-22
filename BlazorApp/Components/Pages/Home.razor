@@ -1,5 +1,6 @@
 ﻿@page "/"
 
+<h4>Home Page</h4>
 
-<Components.JEDIGrid Id="ABC" 
-    TEntity="Data"/>
+<Components.JEDIGrid Id="ABC"
+                     LookupRequest="@(new Repository.Models.LookupRequest<Data, Data>(select: x => x))" />

@@ -1,10 +1,20 @@
+using BlazorApp;
 using BlazorApp.Components;
+using Example.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Radzen;
-using Repository;
-
+using Repository.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddDbContextFactory<ExampleContext>(options =>
+    {
+        options.UseSqlServer(builder.Configuration.GetConnectionString("ExampleDb"));
+    }, 
+    ServiceLifetime.Transient);
+
 // Add services to the container.
+builder.Services.AddScoped<IApplicationContext, ApplicationContext>();
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 

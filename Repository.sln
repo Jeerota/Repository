@@ -8,6 +8,9 @@ EndProject
 Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "Example", "Example\Example.sqlproj", "{7A995B05-ECD1-479A-9396-4979451FE884}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorApp", "BlazorApp\BlazorApp.csproj", "{00D40B48-B8BF-4192-99D0-F5A329652F7C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A7EAE65D-E181-413C-BD30-46133153CFFA} = {A7EAE65D-E181-413C-BD30-46133153CFFA}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Example.Infrastructure", "Example.Infrastructure\Example.Infrastructure.csproj", "{E51DCBC1-9E30-4E1A-AA68-C8D9F3362368}"
 EndProject

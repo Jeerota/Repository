@@ -1,7 +1,7 @@
 @inject IRepository _repository;
 
-@typeparam TEntity where TEntity : BaseEntity
-@typeparam TDTO
+@typeparam TEntity where TEntity : BaseEntity;
+@typeparam TDTO where TDTO : class;
 
 <RadzenDataGrid Data="@Records"
                 IsLoading="@_loading"
@@ -26,9 +26,9 @@
             @foreach (var property in typeof(TDTO).GetProperties())
             {
                 <RadzenDataGridColumn Property="@property.Name"
-                                      Frozen="@ColumnOptionsMap[property.Name].Frozen"
-                                      Title="@ColumnOptionsMap[property.Name].Label"
-                                      ColumnPickerTitle="@ColumnOptionsMap[property.Name].Label">
+                Frozen="@ColumnOptionsMap[property.Name].Frozen"
+                Title="@ColumnOptionsMap[property.Name].Label"
+                ColumnPickerTitle="@ColumnOptionsMap[property.Name].Label">
                     <FilterTemplate>
 
                     </FilterTemplate>
@@ -71,6 +71,12 @@
     [Parameter] public bool AllowVirtualization { get; set; } = true;
     [Parameter] public bool AllowRowSelectOnClick { get; set; } = true;
 
-    IQueryable<TDTO>? Records;
+    IEnumerable<TDTO> Records;
     bool _loading = true;
+
+    protected override void OnInitialized()
+    {
+        this.Records = _repository.GetQueryable<TDTO, TEntity>(LookupRequest).AsEnumerable();
+        base.OnInitialized();
+    }
 }
